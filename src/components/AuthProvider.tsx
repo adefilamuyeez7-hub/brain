@@ -7,17 +7,12 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-  // Graceful fallback for development without Clerk
+  // Graceful fallback when Clerk is not configured
   if (!publishableKey) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        '[Dev Mode] Clerk key missing. Running without authentication.'
-      );
-      return <>{children}</>;
-    }
-    throw new Error(
-      'Missing VITE_CLERK_PUBLISHABLE_KEY environment variable. Set it in .env.local'
+    console.warn(
+      '⚠️ Clerk authentication key missing. Running without authentication. Set VITE_CLERK_PUBLISHABLE_KEY in .env.local to enable.'
     );
+    return <>{children}</>;
   }
 
   return (
