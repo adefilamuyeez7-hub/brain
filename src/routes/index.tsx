@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Plus, Heart, MessageCircle, Github } from "lucide-react";
+import { Search, Plus, Heart, MessageCircle, Github, LogOut } from "lucide-react";
 import React, { useMemo } from "react";
+import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
-import { UserSwitcher } from "@/components/UserSwitcher";
+import { useAuthUser } from "@/hooks/useAuth";
 import avatarUser from "@/assets/avatar-user.jpg";
 import objects3d from "@/assets/3d-objects.png";
 import blocks3d from "@/assets/3d-blocks.png";
@@ -65,16 +66,22 @@ const MOCK_CONTRIBUTIONS = [
   { ideaId: "i_standup", status: "pending" },
 ];
 
-// Memoized header component - prevents unnecessary re-renders
+// Memoized header component - uses real user authentication
 const Header = React.memo(function Header() {
-  const firstName = "Sandra";
+  const { firstName, avatarUrl, isSignedIn, isLoaded } = useAuthUser();
+  const { signOut } = useClerk();
+
+  const today = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
 
   return (
     <header className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-3">
         <img
-          src={avatarUser}
-          alt="Your avatar"
+          src={avatarUrl}
+          alt={`${firstName}'s avatar`}
           width={48}
           height={48}
           className="h-12 w-12 rounded-full object-cover ring-2 ring-card shadow-soft"
@@ -83,15 +90,27 @@ const Header = React.memo(function Header() {
           <h1 className="text-base font-semibold leading-tight">
             Hello, {firstName}
           </h1>
-          <p className="text-xs text-muted-foreground">Today 25 Nov.</p>
+          <p className="text-xs text-muted-foreground">Today {today}</p>
         </div>
       </div>
-      <button
-        aria-label="Search ideas"
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft transition-transform hover:scale-105"
-      >
-        <Search className="h-5 w-5" strokeWidth={2.2} />
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          aria-label="Search ideas"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft transition-transform hover:scale-105"
+        >
+          <Search className="h-5 w-5" strokeWidth={2.2} />
+        </button>
+        {isLoaded && isSignedIn && (
+          <button
+            onClick={() => signOut()}
+            aria-label="Sign out"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft transition-transform hover:scale-105"
+            title="Sign out"
+          >
+            <LogOut className="h-5 w-5" strokeWidth={2.2} />
+          </button>
+        )}
+      </div>
     </header>
   );
 });
@@ -207,10 +226,6 @@ function Index() {
   return (
     <MobileFrame>
       <Header />
-
-      <div className="mt-3 flex justify-end">
-        <UserSwitcher />
-      </div>
 
       <FeaturedSection />
 

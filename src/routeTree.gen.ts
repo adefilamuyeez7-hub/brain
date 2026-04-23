@@ -9,12 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IdeaIdeaIdRouteImport } from './routes/idea.$ideaId'
 
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -46,6 +58,8 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/explore': typeof ExploreRoute
   '/profile': typeof ProfileRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/idea/$ideaId': typeof IdeaIdeaIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +67,8 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/explore': typeof ExploreRoute
   '/profile': typeof ProfileRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/idea/$ideaId': typeof IdeaIdeaIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/explore': typeof ExploreRoute
   '/profile': typeof ProfileRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/idea/$ideaId': typeof IdeaIdeaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/create' | '/explore' | '/profile' | '/idea/$ideaId'
+  fullPaths:
+    | '/'
+    | '/create'
+    | '/explore'
+    | '/profile'
+    | '/sign-in'
+    | '/sign-up'
+    | '/idea/$ideaId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/create' | '/explore' | '/profile' | '/idea/$ideaId'
-  id: '__root__' | '/' | '/create' | '/explore' | '/profile' | '/idea/$ideaId'
+  to:
+    | '/'
+    | '/create'
+    | '/explore'
+    | '/profile'
+    | '/sign-in'
+    | '/sign-up'
+    | '/idea/$ideaId'
+  id:
+    | '__root__'
+    | '/'
+    | '/create'
+    | '/explore'
+    | '/profile'
+    | '/sign-in'
+    | '/sign-up'
+    | '/idea/$ideaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,11 +116,27 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   ExploreRoute: typeof ExploreRoute
   ProfileRoute: typeof ProfileRoute
+  SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
   IdeaIdeaIdRoute: typeof IdeaIdeaIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -124,6 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   ExploreRoute: ExploreRoute,
   ProfileRoute: ProfileRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
   IdeaIdeaIdRoute: IdeaIdeaIdRoute,
 }
 export const routeTree = rootRouteImport
