@@ -12,7 +12,22 @@ if (!rootElement) {
 }
 
 const router = getRouter();
-const queryClient = new QueryClient();
+
+// Optimized QueryClient configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes garbage collection
+      retry: 1, // Retry failed requests once
+      refetchOnWindowFocus: false, // Don't refetch on tab focus
+      refetchOnReconnect: "stale", // Refetch if stale when reconnecting
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>

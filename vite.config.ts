@@ -14,5 +14,18 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    // Optimize chunk size warnings
+    chunkSizeWarningLimit: 500,
+    // Configure chunk splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "@tanstack/react-router"],
+          queries: ["@tanstack/react-query"],
+          supabase: ["@supabase/supabase-js"],
+          clerk: ["@clerk/clerk-react"],
+        },
+      },
+    },
   },
 });

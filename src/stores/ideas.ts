@@ -1,4 +1,5 @@
-import { create } from "zustand";
+// Mock store - use React Query hooks from @/hooks/useApi for backend data
+// This file provides fallback data for components during transition to React Query
 
 export type ContributionStatus = "pending" | "approved" | "rejected";
 
@@ -36,25 +37,7 @@ const MOCK_USERS: MockUser[] = [
   { id: "u_theo", name: "Theo Park" },
 ];
 
-interface IdeasState {
-  users: MockUser[];
-  currentUserId: string;
-  ideas: Idea[];
-  contributions: Contribution[];
-  setCurrentUser: (id: string) => void;
-  addIdea: (input: {
-    title: string;
-    brief: string;
-    description: string;
-    tag: string;
-    githubUrl?: string;
-  }) => string;
-  proposeContribution: (input: { ideaId: string; content: string }) => void;
-  setContributionStatus: (id: string, status: ContributionStatus) => void;
-  toggleLike: (ideaId: string) => void;
-}
-
-const seedIdeas: Idea[] = [
+const MOCK_IDEAS: Idea[] = [
   {
     id: "i_notes",
     title: "Soft UI for note apps",
@@ -83,14 +66,13 @@ const seedIdeas: Idea[] = [
   },
 ];
 
-const seedContributions: Contribution[] = [
+const MOCK_CONTRIBUTIONS: Contribution[] = [
   {
     id: "c_1",
     ideaId: "i_notes",
     authorId: "u_theo",
     authorName: "Theo Park",
-    content:
-      "Add a 'mood tag' to each note (calm, spark, todo) that subtly tints the card.",
+    content: "Add a 'mood tag' to each note (calm, spark, todo) that subtly tints the card.",
     status: "approved",
     createdAt: Date.now() - 1000 * 60 * 60 * 4,
   },
@@ -99,67 +81,28 @@ const seedContributions: Contribution[] = [
     ideaId: "i_notes",
     authorId: "u_sandra",
     authorName: "Sandra Lee",
-    content:
-      "What about a weekly 'sketchbook recap' that stitches notes into a story?",
+    content: "What about a weekly 'sketchbook recap' that stitches notes into a story?",
     status: "pending",
     createdAt: Date.now() - 1000 * 60 * 30,
   },
 ];
 
-export const useIdeasStore = create<IdeasState>((set, get) => ({
+// Mock store state (for backward compatibility during migration to React Query)
+let mockState = {
   users: MOCK_USERS,
   currentUserId: "u_sandra",
-  ideas: seedIdeas,
-  contributions: seedContributions,
+  ideas: MOCK_IDEAS,
+  contributions: MOCK_CONTRIBUTIONS,
+};
 
-  setCurrentUser: (id) => set({ currentUserId: id }),
+// Export as a mock hook for backward compatibility
+// Components should migrate to useApi hooks from @/hooks/useApi
+export const useIdeasStore = ((selector: any) => {
+  return selector(mockState);
+}) as any;
 
-  addIdea: ({ title, brief, description, tag, githubUrl }) => {
-    const { currentUserId, users } = get();
-    const owner = users.find((u) => u.id === currentUserId)!;
-    const id = `i_${Math.random().toString(36).slice(2, 9)}`;
-    const idea: Idea = {
-      id,
-      title,
-      brief,
-      description,
-      tag,
-      githubUrl: githubUrl?.trim() ? githubUrl.trim() : undefined,
-      ownerId: owner.id,
-      ownerName: owner.name,
-      likes: 0,
-      createdAt: Date.now(),
-    };
-    set((s) => ({ ideas: [idea, ...s.ideas] }));
-    return id;
-  },
-
-  proposeContribution: ({ ideaId, content }) => {
-    const { currentUserId, users } = get();
-    const author = users.find((u) => u.id === currentUserId)!;
-    const contribution: Contribution = {
-      id: `c_${Math.random().toString(36).slice(2, 9)}`,
-      ideaId,
-      authorId: author.id,
-      authorName: author.name,
-      content,
-      status: "pending",
-      createdAt: Date.now(),
-    };
-    set((s) => ({ contributions: [contribution, ...s.contributions] }));
-  },
-
-  setContributionStatus: (id, status) =>
-    set((s) => ({
-      contributions: s.contributions.map((c) =>
-        c.id === id ? { ...c, status } : c
-      ),
-    })),
-
-  toggleLike: (ideaId) =>
-    set((s) => ({
-      ideas: s.ideas.map((i) =>
-        i.id === ideaId ? { ...i, likes: i.likes + 1 } : i
-      ),
-    })),
-}));
+// Static methods for compatibility
+useIdeasStore.getState = () => mockState;
+useIdeasStore.setState = (state: any) => {
+  mockState = { ...mockState, ...state };
+};
