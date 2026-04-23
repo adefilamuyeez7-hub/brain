@@ -2,12 +2,35 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseEnvErrorMessage =
+  'Missing Supabase environment variables. Check .env.local and restart the dev server.';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Check .env.local');
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
+  console.warn(`[Supabase] ${supabaseEnvErrorMessage}`);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+type SupabaseClient = ReturnType<typeof createClient>;
+
+const createSupabaseConfigError = () => {
+  const error = new Error(supabaseEnvErrorMessage);
+  error.name = 'SupabaseConfigurationError';
+  return error;
+};
+
+const supabaseFallback = new Proxy(
+  {},
+  {
+    get() {
+      throw createSupabaseConfigError();
+    },
+  }
+) as SupabaseClient;
+
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : supabaseFallback;
 
 // Database types
 export interface User {
