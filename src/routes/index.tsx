@@ -1,11 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, Plus, Heart, MessageCircle, Github, LogOut } from "lucide-react";
 import React, { useMemo } from "react";
-import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { IdeaGridSkeleton } from "@/components/SkeletonLoaders";
 import { useAuthUser } from "@/hooks/useAuth";
-import { useIdeas, useContributions } from "@/hooks/useApi";
+import { useIdeas } from "@/hooks/useApi";
 import objects3d from "@/assets/3d-objects.png";
 import blocks3d from "@/assets/3d-blocks.png";
 
@@ -41,8 +40,7 @@ const CARD_PALETTE = [
 
 // Memoized header component - uses real user authentication
 const Header = React.memo(function Header() {
-  const { firstName, avatarUrl, isSignedIn, isLoaded } = useAuthUser();
-  const { signOut } = useClerk();
+  const { firstName, avatarUrl, isSignedIn, isLoaded, signOut } = useAuthUser();
 
   const today = new Date().toLocaleDateString("en-US", {
     day: "numeric",
@@ -75,7 +73,7 @@ const Header = React.memo(function Header() {
         </button>
         {isLoaded && isSignedIn && (
           <button
-            onClick={() => signOut()}
+            onClick={signOut}
             aria-label="Sign out"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft transition-transform hover:scale-105"
             title="Sign out"

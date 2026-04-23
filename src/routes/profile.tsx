@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { LogOut } from "lucide-react";
 import { useAuthUser } from "@/hooks/useAuth";
@@ -17,8 +16,8 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const { isSignedIn, isLoaded, avatarUrl, fullName, bio, stats, user } = useAuthUser();
-  const { signOut } = useClerk();
+  const { isSignedIn, isLoaded, avatarUrl, fullName, bio, stats, user, signOut } =
+    useAuthUser();
 
   // Fetch user's ideas from API if they have a user ID
   const userID = user?.id || "";
@@ -48,7 +47,7 @@ function ProfilePage() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Profile</h1>
         <button
-          onClick={() => signOut()}
+          onClick={signOut}
           aria-label="Sign out"
           className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft transition-transform hover:scale-105"
           title="Sign out"
