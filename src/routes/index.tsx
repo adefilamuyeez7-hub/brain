@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, Plus, Heart, MessageCircle, Github, LogOut } from "lucide-react";
 import React, { useMemo } from "react";
-import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { useAuthUser } from "@/hooks/useAuth";
 import avatarUser from "@/assets/avatar-user.jpg";
