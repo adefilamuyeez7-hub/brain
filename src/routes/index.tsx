@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, Plus, Heart, MessageCircle, Github, LogOut } from "lucide-react";
 import React, { useMemo } from "react";
+import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
+import { IdeaGridSkeleton } from "@/components/SkeletonLoaders";
 import { useAuthUser } from "@/hooks/useAuth";
 import { useIdeas, useContributions } from "@/hooks/useApi";
 import objects3d from "@/assets/3d-objects.png";
@@ -213,9 +215,7 @@ function Index() {
       {/* Idea cards - optimized */}
       <section className="mt-3 grid grid-cols-2 gap-3">
         {ideasLoading ? (
-          <p className="col-span-2 text-center text-sm text-muted-foreground py-8">
-            Loading ideas...
-          </p>
+          <IdeaGridSkeleton count={6} />
         ) : ideasError ? (
           <p className="col-span-2 text-center text-sm text-red-500 py-8">
             Failed to load ideas

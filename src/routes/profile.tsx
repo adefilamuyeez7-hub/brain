@@ -3,6 +3,7 @@ import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { LogOut } from "lucide-react";
 import { useAuthUser } from "@/hooks/useAuth";
+import { IdeaListSkeletons } from "@/components/SkeletonLoaders";
 import { useUserIdeas } from "@/hooks/useApi";
 
 export const Route = createFileRoute("/profile")({
@@ -83,7 +84,7 @@ function ProfilePage() {
 
       <h3 className="mt-6 text-lg font-bold">Your ideas</h3>
       {ideasLoading ? (
-        <p className="mt-3 text-center text-sm text-muted-foreground">Loading ideas...</p>
+        <IdeaListSkeletons count={3} />
       ) : userIdeas.length === 0 ? (
         <p className="mt-3 text-center text-sm text-muted-foreground">
           You haven't created any ideas yet.

@@ -11,6 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import { MobileFrame } from "@/components/MobileFrame";
+import { IdeaDetailSkeleton } from "@/components/SkeletonLoaders";
 import { useIdea, useContributions, useLikeIdea } from "@/hooks/useApi";
 import { useAuthUser } from "@/hooks/useAuth";
 
@@ -58,8 +59,15 @@ function IdeaDetail() {
   if (ideaLoading) {
     return (
       <MobileFrame>
-        <div className="mt-20 text-center">
-          <p className="text-muted-foreground">Loading idea...</p>
+        <div>
+          <Link
+            to="/"
+            aria-label="Back"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-soft"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <IdeaDetailSkeleton />
         </div>
       </MobileFrame>
     );
