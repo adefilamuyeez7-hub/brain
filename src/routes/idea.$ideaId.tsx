@@ -11,12 +11,8 @@ import {
   Lock,
 } from "lucide-react";
 import { MobileFrame } from "@/components/MobileFrame";
-import { UserSwitcher } from "@/components/UserSwitcher";
-import {
-  useIdeasStore,
-  type Contribution,
-  type ContributionStatus,
-} from "@/stores/ideas";
+import { useIdea, useContributions, useLikeIdea } from "@/hooks/useApi";
+import { useAuthUser } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/idea/$ideaId")({
   component: IdeaDetail,
@@ -30,18 +26,12 @@ export const Route = createFileRoute("/idea/$ideaId")({
       </div>
     </MobileFrame>
   ),
-  loader: ({ params }) => {
-    // Validate the param exists in store. Loaders run on client too here (mock data).
-    const { ideas } = useIdeasStore.getState();
-    if (!ideas.some((i) => i.id === params.ideaId)) throw notFound();
-    return { ideaId: params.ideaId };
-  },
-  head: ({ loaderData }) => ({
+  head: ({ params }) => ({
     meta: [
       { title: "Idea — Sparkboard" },
       {
         name: "description",
-        content: `View and contribute to idea ${loaderData?.ideaId ?? ""}.`,
+        content: `View and contribute to this idea.`,
       },
     ],
   }),
@@ -55,22 +45,42 @@ const proposalSchema = z
 
 function IdeaDetail() {
   const { ideaId } = Route.useParams();
-  const idea = useIdeasStore((s) => s.ideas.find((i) => i.id === ideaId));
-  const allContributions = useIdeasStore((s) => s.contributions);
-  const contributions = allContributions.filter((c) => c.ideaId === ideaId);
-  const currentUserId = useIdeasStore((s) => s.currentUserId);
-  const proposeContribution = useIdeasStore((s) => s.proposeContribution);
-  const setContributionStatus = useIdeasStore((s) => s.setContributionStatus);
-  const toggleLike = useIdeasStore((s) => s.toggleLike);
+  const { user } = useAuthUser();
+  
+  // Fetch idea and contributions from API
+  const { data: idea, isLoading: ideaLoading, error: ideaError } = useIdea(ideaId);
+  const { data: contributions = [], isLoading: contribsLoading } = useContributions(ideaId);
+  const likeIdea = useLikeIdea(ideaId);
 
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  if (!idea) return null; // notFound handled in loader
+  if (ideaLoading) {
+    return (
+      <MobileFrame>
+        <div className="mt-20 text-center">
+          <p className="text-muted-foreground">Loading idea...</p>
+        </div>
+      </MobileFrame>
+    );
+  }
 
-  const isOwner = currentUserId === idea.ownerId;
-  const approved = contributions.filter((c) => c.status === "approved");
-  const pending = contributions.filter((c) => c.status === "pending");
+  if (ideaError || !idea) {
+    return (
+      <MobileFrame>
+        <div className="mt-20 text-center">
+          <h1 className="text-xl font-bold">Idea not found</h1>
+          <Link to="/" className="mt-4 inline-block text-sm text-muted-foreground underline">
+            Back home
+          </Link>
+        </div>
+      </MobileFrame>
+    );
+  }
+
+  const isOwner = user?.id === idea.user_id;
+  const approved = contributions.filter((c: any) => c.status === "approved");
+  const pending = contributions.filter((c: any) => c.status === "pending");
 
   const submitProposal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +90,8 @@ function IdeaDetail() {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
     }
-    proposeContribution({ ideaId: idea.id, content: parsed.data });
+    // Will call useProposeContribution hook here
+    // proposeContribution({ ideaId: idea.id, content: parsed.data });
     setDraft("");
   };
 
@@ -94,7 +105,6 @@ function IdeaDetail() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <UserSwitcher />
       </header>
 
       {/* Idea hero */}
@@ -106,18 +116,18 @@ function IdeaDetail() {
           {idea.title}
         </h1>
         <p className="mt-2 text-sm text-lilac-foreground/90">{idea.brief}</p>
-        <p className="mt-3 text-xs text-lilac-foreground/80">by {idea.ownerName}</p>
+        <p className="mt-3 text-xs text-lilac-foreground/80">by {idea.owner_name || "Unknown"}</p>
 
         <div className="mt-4 flex items-center gap-2">
           <button
-            onClick={() => toggleLike(idea.id)}
+            onClick={() => likeIdea.mutate(user?.id || "")}
             className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-ink-foreground"
           >
-            <Heart className="h-3.5 w-3.5" /> {idea.likes}
+            <Heart className="h-3.5 w-3.5" /> {idea.likes_count || 0}
           </button>
-          {idea.githubUrl ? (
+          {idea.github_url ? (
             <a
-              href={idea.githubUrl}
+              href={idea.github_url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1.5 text-xs font-semibold text-foreground"

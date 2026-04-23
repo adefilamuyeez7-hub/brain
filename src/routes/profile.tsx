@@ -3,6 +3,7 @@ import { useClerk } from "@clerk/clerk-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { LogOut } from "lucide-react";
 import { useAuthUser } from "@/hooks/useAuth";
+import { useUserIdeas } from "@/hooks/useApi";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
@@ -15,15 +16,13 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const { isSignedIn, isLoaded, avatarUrl, fullName, bio, stats } = useAuthUser();
+  const { isSignedIn, isLoaded, avatarUrl, fullName, bio, stats, user } = useAuthUser();
   const { signOut } = useClerk();
 
-  // Mock recent ideas - will be replaced with API call to fetch user's real ideas
-  const recent = [
-    { title: "Soft UI for note apps", tag: "Design", likes: 128 },
-    { title: "Async standups via voice memo", tag: "Product", likes: 86 },
-    { title: "Calendars as playlists", tag: "Tech", likes: 312 },
-  ];
+  // Fetch user's ideas from API if they have a user ID
+  const userID = user?.id || "";
+  const { data: userIdeas = [], isLoading: ideasLoading } = useUserIdeas(userID);
+
   if (isLoaded && !isSignedIn) {
     return (
       <MobileFrame>
@@ -70,7 +69,7 @@ function ProfilePage() {
 
         <div className="mt-5 grid w-full grid-cols-3 gap-2">
           {[
-            { label: "Ideas", value: stats.ideas },
+            { label: "Ideas", value: stats.ideas || userIdeas.length },
             { label: "Sparks", value: stats.sparks },
             { label: "Following", value: stats.following },
           ].map((s) => (
@@ -83,22 +82,30 @@ function ProfilePage() {
       </section>
 
       <h3 className="mt-6 text-lg font-bold">Your ideas</h3>
-      <ul className="mt-3 space-y-3">
-        {recent.map((r) => (
-          <li
-            key={r.title}
-            className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft"
-          >
-            <div>
-              <p className="text-sm font-semibold">{r.title}</p>
-              <p className="text-xs text-muted-foreground">{r.tag}</p>
-            </div>
-            <span className="rounded-full bg-mint px-3 py-1 text-xs font-medium text-mint-foreground">
-              ♥ {r.likes}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {ideasLoading ? (
+        <p className="mt-3 text-center text-sm text-muted-foreground">Loading ideas...</p>
+      ) : userIdeas.length === 0 ? (
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          You haven't created any ideas yet.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {userIdeas.map((idea: any) => (
+            <li
+              key={idea.id}
+              className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft"
+            >
+              <div>
+                <p className="text-sm font-semibold">{idea.title}</p>
+                <p className="text-xs text-muted-foreground">{idea.tag}</p>
+              </div>
+              <span className="rounded-full bg-mint px-3 py-1 text-xs font-medium text-mint-foreground">
+                ♥ {idea.likes_count || 0}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </MobileFrame>
   );
 }

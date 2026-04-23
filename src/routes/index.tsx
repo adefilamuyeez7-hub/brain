@@ -3,7 +3,7 @@ import { Search, Plus, Heart, MessageCircle, Github, LogOut } from "lucide-react
 import React, { useMemo } from "react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { useAuthUser } from "@/hooks/useAuth";
-import avatarUser from "@/assets/avatar-user.jpg";
+import { useIdeas, useContributions } from "@/hooks/useApi";
 import objects3d from "@/assets/3d-objects.png";
 import blocks3d from "@/assets/3d-blocks.png";
 
@@ -35,34 +35,6 @@ const CARD_PALETTE = [
   { bg: "bg-sky", fg: "text-sky-foreground", art: objects3d },
   { bg: "bg-blush", fg: "text-blush-foreground", art: blocks3d },
   { bg: "bg-mint", fg: "text-mint-foreground", art: objects3d },
-];
-
-// Mock data - replace with useIdeas() hook when backend is configured
-const MOCK_IDEAS = [
-  {
-    id: "i_notes",
-    title: "Soft UI for note apps",
-    brief: "A calmer, pastel-first notes experience.",
-    tag: "Design",
-    ownerName: "Mira Chen",
-    likes: 128,
-    githubUrl: "https://github.com/sparkboard/soft-notes",
-  },
-  {
-    id: "i_standup",
-    title: "Async standups via voice memo",
-    brief: "60-second daily voice memos instead of meetings.",
-    tag: "Product",
-    ownerName: "Theo Park",
-    likes: 86,
-    githubUrl: undefined,
-  },
-];
-
-const MOCK_CONTRIBUTIONS = [
-  { ideaId: "i_notes", status: "approved" },
-  { ideaId: "i_notes", status: "approved" },
-  { ideaId: "i_standup", status: "pending" },
 ];
 
 // Memoized header component - uses real user authentication
@@ -167,7 +139,7 @@ const IdeaCard = React.memo(function IdeaCard({
   palette,
   approvedCount,
 }: {
-  idea: (typeof MOCK_IDEAS)[0];
+  idea: any;
   palette: (typeof CARD_PALETTE)[0];
   approvedCount: number;
 }) {
@@ -190,15 +162,15 @@ const IdeaCard = React.memo(function IdeaCard({
       />
       <div>
         <h4 className="text-base font-bold leading-tight">{idea.title}</h4>
-        <p className="mt-1 text-[11px] opacity-70">by {idea.ownerName}</p>
+        <p className="mt-1 text-[11px] opacity-70">by {idea.owner_name || "Unknown"}</p>
         <div className="mt-3 flex items-center gap-3 text-[11px] font-medium">
           <span className="inline-flex items-center gap-1">
-            <Heart className="h-3.5 w-3.5" /> {idea.likes}
+            <Heart className="h-3.5 w-3.5" /> {idea.likes_count || 0}
           </span>
           <span className="inline-flex items-center gap-1">
             <MessageCircle className="h-3.5 w-3.5" /> {approvedCount}
           </span>
-          {idea.githubUrl && (
+          {idea.github_url && (
             <span className="inline-flex items-center gap-1">
               <Github className="h-3.5 w-3.5" />
             </span>
@@ -210,17 +182,17 @@ const IdeaCard = React.memo(function IdeaCard({
 });
 
 function Index() {
-  // Calculate approved contributions count - memoized to prevent recalculation
-  const ideasWithCounts = useMemo(
-    () =>
-      MOCK_IDEAS.map((idea) => ({
-        ...idea,
-        approvedCount: MOCK_CONTRIBUTIONS.filter(
-          (c) => c.ideaId === idea.id && c.status === "approved"
-        ).length,
-      })),
-    []
-  );
+  // Fetch ideas from API
+  const { data: ideas = [], isLoading: ideasLoading, error: ideasError } = useIdeas();
+
+  // For each idea, fetch contribution counts
+  const ideasWithCounts = useMemo(() => {
+    return ideas.map((idea, index) => ({
+      ...idea,
+      approvedCount: 0, // Will be fetched in a follow-up
+      paletteIndex: index % CARD_PALETTE.length,
+    }));
+  }, [ideas]);
 
   return (
     <MobileFrame>
@@ -240,14 +212,28 @@ function Index() {
 
       {/* Idea cards - optimized */}
       <section className="mt-3 grid grid-cols-2 gap-3">
-        {ideasWithCounts.map((idea, i) => (
-          <IdeaCard
-            key={idea.id}
-            idea={idea}
-            palette={CARD_PALETTE[i % CARD_PALETTE.length]}
-            approvedCount={idea.approvedCount}
-          />
-        ))}
+        {ideasLoading ? (
+          <p className="col-span-2 text-center text-sm text-muted-foreground py-8">
+            Loading ideas...
+          </p>
+        ) : ideasError ? (
+          <p className="col-span-2 text-center text-sm text-red-500 py-8">
+            Failed to load ideas
+          </p>
+        ) : ideasWithCounts.length === 0 ? (
+          <p className="col-span-2 text-center text-sm text-muted-foreground py-8">
+            No ideas yet. Be the first to create one!
+          </p>
+        ) : (
+          ideasWithCounts.map((idea) => (
+            <IdeaCard
+              key={idea.id}
+              idea={idea}
+              palette={CARD_PALETTE[idea.paletteIndex]}
+              approvedCount={idea.approvedCount}
+            />
+          ))
+        )}
       </section>
 
       {/* Floating create CTA above bottom nav */}
