@@ -1,18 +1,24 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import {
   ArrowLeft,
+  Check,
   Github,
   Heart,
-  Check,
-  X,
-  Sparkles,
   Lock,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { MobileFrame } from "@/components/MobileFrame";
 import { IdeaDetailSkeleton } from "@/components/SkeletonLoaders";
-import { useIdea, useContributions, useLikeIdea } from "@/hooks/useApi";
+import {
+  useContributions,
+  useIdea,
+  useLikeIdea,
+  useProposeContribution,
+  useSetContributionStatus,
+} from "@/hooks/useApi";
 import { useAuthUser } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/idea/$ideaId")({
@@ -27,13 +33,10 @@ export const Route = createFileRoute("/idea/$ideaId")({
       </div>
     </MobileFrame>
   ),
-  head: ({ params }) => ({
+  head: () => ({
     meta: [
-      { title: "Idea — Sparkboard" },
-      {
-        name: "description",
-        content: `View and contribute to this idea.`,
-      },
+      { title: "Idea - Sparkboard" },
+      { name: "description", content: "View and contribute to this idea." },
     ],
   }),
 });
@@ -45,14 +48,16 @@ const proposalSchema = z
   .max(500, "Keep it under 500 characters");
 
 function IdeaDetail() {
+  const navigate = useNavigate();
   const { ideaId } = Route.useParams();
-  const { user } = useAuthUser();
-  
-  // Fetch idea and contributions from API
+  const { user, isSignedIn, isClerkConfigured } = useAuthUser();
   const { data: idea, isLoading: ideaLoading, error: ideaError } = useIdea(ideaId);
-  const { data: contributions = [], isLoading: contribsLoading } = useContributions(ideaId);
+  const { data: contributionsResponse, isLoading: contributionsLoading } = useContributions(ideaId);
   const likeIdea = useLikeIdea(ideaId);
+  const proposeContribution = useProposeContribution();
+  const setContributionStatus = useSetContributionStatus();
 
+  const contributions = contributionsResponse?.data ?? [];
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -87,20 +92,48 @@ function IdeaDetail() {
   }
 
   const isOwner = user?.id === idea.user_id;
-  const approved = contributions.filter((c: any) => c.status === "approved");
-  const pending = contributions.filter((c: any) => c.status === "pending");
+  const approved = contributions.filter((contribution: any) => contribution.status === "approved");
+  const pending = contributions.filter((contribution: any) => contribution.status === "pending");
 
-  const submitProposal = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitProposal = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
+
+    if (!isSignedIn || !user?.id) {
+      if (isClerkConfigured) {
+        navigate({ to: "/sign-in" });
+      } else {
+        setError("Sign-in is not configured for this deployment yet.");
+      }
+      return;
+    }
+
     const parsed = proposalSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
     }
-    // Will call useProposeContribution hook here
-    // proposeContribution({ ideaId: idea.id, content: parsed.data });
-    setDraft("");
+
+    try {
+      await proposeContribution.mutateAsync({
+        idea_id: idea.id,
+        user_id: user.id,
+        title: parsed.data.slice(0, 60),
+        description: parsed.data,
+      });
+      setDraft("");
+    } catch (submitError) {
+      const message =
+        submitError instanceof Error ? submitError.message : "Failed to submit contribution";
+      setError(message);
+    }
+  };
+
+  const handleLike = () => {
+    if (!user?.id) {
+      return;
+    }
+    likeIdea.mutate(user.id);
   };
 
   return (
@@ -115,7 +148,6 @@ function IdeaDetail() {
         </Link>
       </header>
 
-      {/* Idea hero */}
       <section className="mt-4 rounded-3xl bg-lilac p-5 shadow-pop">
         <span className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground">
           {idea.tag}
@@ -128,7 +160,7 @@ function IdeaDetail() {
 
         <div className="mt-4 flex items-center gap-2">
           <button
-            onClick={() => likeIdea.mutate(user?.id || "")}
+            onClick={handleLike}
             className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-ink-foreground"
           >
             <Heart className="h-3.5 w-3.5" /> {idea.likes_count || 0}
@@ -150,89 +182,91 @@ function IdeaDetail() {
         </div>
       </section>
 
-      {/* Description */}
       <section className="mt-5 rounded-3xl bg-card p-5 shadow-soft">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           About this idea
         </h2>
-        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
-          {idea.description}
-        </p>
+        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{idea.description}</p>
       </section>
 
-      {/* Approved community concepts */}
       <section className="mt-5">
         <h2 className="text-lg font-bold">
           Community concepts{" "}
-          <span className="text-sm font-medium text-muted-foreground">
-            ({approved.length})
-          </span>
+          <span className="text-sm font-medium text-muted-foreground">({approved.length})</span>
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Concepts approved by the idea owner.
-        </p>
+        <p className="text-xs text-muted-foreground">Concepts approved by the idea owner.</p>
 
-        {approved.length === 0 ? (
+        {contributionsLoading ? (
+          <div className="mt-3 rounded-2xl bg-card p-4 text-sm text-muted-foreground shadow-soft">
+            Loading contributions...
+          </div>
+        ) : approved.length === 0 ? (
           <div className="mt-3 rounded-2xl border border-dashed border-border bg-card/50 p-4 text-center text-xs text-muted-foreground">
             No approved concepts yet. Be the first to propose one.
           </div>
         ) : (
           <ul className="mt-3 space-y-2">
-            {approved.map((c) => (
-              <ConceptCard key={c.id} c={c} variant="approved" />
+            {approved.map((contribution: any) => (
+              <ConceptCard key={contribution.id} contribution={contribution} variant="approved" />
             ))}
           </ul>
         )}
       </section>
 
-      {/* Owner approval queue */}
       {isOwner && pending.length > 0 && (
         <section className="mt-5">
           <h2 className="text-lg font-bold">
             Pending review{" "}
-            <span className="text-sm font-medium text-muted-foreground">
-              ({pending.length})
-            </span>
+            <span className="text-sm font-medium text-muted-foreground">({pending.length})</span>
           </h2>
           <ul className="mt-3 space-y-2">
-            {pending.map((c) => (
+            {pending.map((contribution: any) => (
               <ConceptCard
-                key={c.id}
-                c={c}
+                key={contribution.id}
+                contribution={contribution}
                 variant="pending"
-                onAction={(status) => setContributionStatus(c.id, status)}
+                onAction={(status) =>
+                  setContributionStatus.mutate({
+                    contributionId: contribution.id,
+                    status,
+                  })
+                }
               />
             ))}
           </ul>
         </section>
       )}
 
-      {/* Propose form (signed-in only — always true in mock) */}
       <section className="mt-5 rounded-3xl bg-card p-4 shadow-soft">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <Sparkles className="h-4 w-4 text-lilac" /> Propose a concept
         </h2>
         {isOwner ? (
           <p className="mt-1 text-xs text-muted-foreground">
-            You're the owner — wait for others to propose, then approve here.
+            You're the owner - wait for others to propose, then approve here.
           </p>
         ) : (
           <form onSubmit={submitProposal} className="mt-3 space-y-3">
             <textarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(event) => setDraft(event.target.value)}
               maxLength={500}
               rows={4}
-              placeholder="Add to this idea — a feature, twist, or use case…"
+              placeholder={
+                isSignedIn
+                  ? "Add to this idea - a feature, twist, or use case..."
+                  : "Write your idea here. You'll only need to sign in when you submit."
+              }
               className="w-full resize-none rounded-2xl bg-secondary p-3 text-sm outline-none placeholder:text-muted-foreground/60"
             />
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Lock className="h-3 w-3" /> Owner approves before it's public
+                <Lock className="h-3 w-3" />{" "}
+                {isSignedIn
+                  ? "Owner approves before it's public"
+                  : "Login is only required when you submit"}
               </span>
-              <span className="text-[10px] text-muted-foreground">
-                {draft.length}/500
-              </span>
+              <span className="text-[10px] text-muted-foreground">{draft.length}/500</span>
             </div>
             {error && (
               <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
@@ -243,7 +277,7 @@ function IdeaDetail() {
               type="submit"
               className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-ink-foreground"
             >
-              Submit for approval
+              {isSignedIn ? "Submit for approval" : "Sign in to contribute"}
             </button>
           </form>
         )}
@@ -253,18 +287,20 @@ function IdeaDetail() {
 }
 
 function ConceptCard({
-  c,
+  contribution,
   variant,
   onAction,
 }: {
-  c: Contribution;
+  contribution: any;
   variant: "approved" | "pending";
-  onAction?: (status: ContributionStatus) => void;
+  onAction?: (status: "approved" | "rejected") => void;
 }) {
+  const body = contribution.description || contribution.content || contribution.title;
+
   return (
     <li className="rounded-2xl bg-card p-4 shadow-soft">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold">{c.authorName}</p>
+        <p className="text-xs font-semibold">{contribution.author_name || "Community member"}</p>
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
             variant === "approved"
@@ -272,10 +308,10 @@ function ConceptCard({
               : "bg-mango text-mango-foreground"
           }`}
         >
-          {c.status}
+          {contribution.status}
         </span>
       </div>
-      <p className="mt-2 text-sm leading-snug">{c.content}</p>
+      <p className="mt-2 text-sm leading-snug">{body}</p>
       {variant === "pending" && onAction && (
         <div className="mt-3 flex gap-2">
           <button
